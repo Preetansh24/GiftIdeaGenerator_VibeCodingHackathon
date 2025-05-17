@@ -912,7 +912,7 @@ header {
     list-style: none;
 }
 :root {
-    /* Add these to your existing variables */
+    
     --border-radius: 8px;
     --border-radius-sm: 4px;
     --transition: all 0.3s ease;
