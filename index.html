@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="giftGenius">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GiftGenius | AI-Powered Gift Recommendations</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body ng-controller="GiftController" ng-class="{'dark-mode': darkMode}">
+    <div class="app-container">
+        <!-- Theme Toggle -->
+        <button class="theme-toggle" ng-click="toggleTheme()">
+            <i class="fas" ng-class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
+        </button>
+
+        <!-- Header with Animated Logo -->
+        <header>
+            <div class="logo-container">
+                <div class="logo-box" ng-click="reset()">
+                    <i class="fas fa-gift logo-icon"></i>
+                    <span class="logo-text">GiftGenius</span>
+                </div>
+                <div class="tagline">AI-powered perfect gifts for every occasion</div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Input Section with Stepper -->
+            <section class="input-section" ng-show="!suggestions.length">
+                <div class="stepper">
+                    <div class="step" ng-class="{'active': currentStep === 1}">1</div>
+                    <div class="step" ng-class="{'active': currentStep === 2}">2</div>
+                    <div class="step" ng-class="{'active': currentStep === 3}">3</div>
+                </div>
+
+                <!-- Step 1: Recipient & Occasion -->
+                <div class="input-card" ng-show="currentStep === 1">
+                    <h2><i class="fas fa-user-astronaut"></i> Tell us about the recipient</h2>
+                    <div class="form-group">
+                        <label>Who are you shopping for?</label>
+                        <input type="text" ng-model="recipient.name" placeholder="e.g. Mom, Best Friend, Partner">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Relationship</label>
+                        <select ng-model="recipient.relationship">
+                            <option value="">Select relationship...</option>
+                            <option>Family</option>
+                            <option>Friend</option>
+                            <option>Partner</option>
+                            <option>Colleague</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>What's the occasion?</label>
+                        <div class="occasion-grid">
+                            <div class="occasion-card" ng-repeat="occasion in occasions" 
+                                 ng-class="{'selected': selectedOccasion === occasion}"
+                                 ng-click="selectOccasion(occasion)">
+                                <i class="fas" ng-class="getOccasionIcon(occasion)"></i>
+                                <span>{{occasion}}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="next-btn" ng-click="nextStep()" ng-disabled="!selectedOccasion">
+                        Next: Interests <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Step 2: Interests -->
+                <div class="input-card" ng-show="currentStep === 2">
+                    <h2><i class="fas fa-heart"></i> Select their interests</h2>
+                    <div class="interest-cloud">
+                        <span ng-repeat="tag in allTags" 
+                              class="interest-tag" 
+                              ng-class="{'selected': selectedTags.includes(tag)}"
+                              ng-click="toggleTag(tag)">
+                            {{tag}}
+                            <i class="fas fa-check"></i>
+                        </span>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="back-btn" ng-click="prevStep()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button class="next-btn" ng-click="nextStep()">
+                            Next: Budget <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Budget -->
+                <div class="input-card" ng-show="currentStep === 3">
+                    <h2><i class="fas fa-coins"></i> What's your budget?</h2>
+                    <div class="budget-slider-container">
+                        <input type="range" min="0" max="4" ng-model="budgetIndex" class="budget-slider">
+                        <div class="budget-labels">
+                            <span ng-repeat="budget in budgets" 
+                                  ng-class="{'active': $index === budgetIndex}">
+                                {{budget}}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Any special preferences?</label>
+                        <textarea ng-model="additionalNotes" placeholder="Eco-friendly, handmade, etc."></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="back-btn" ng-click="prevStep()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button class="generate-btn" ng-click="generateSuggestions()">
+                            <i class="fas fa-magic"></i> Generate Gift Ideas
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" ng-show="suggestions.length > 0">
+                <div class="results-header">
+                    <h2>
+                        <i class="fas" ng-class="getOccasionIcon(selectedOccasion)"></i>
+                        {{selectedOccasion}} gifts for {{recipient.name || 'your special someone'}}
+                    </h2>
+                    
+                    <div class="results-controls">
+                        <div class="sort-options">
+                            <select ng-model="sortOption" ng-change="sortSuggestions()">
+                                <option value="match">Best Match</option>
+                                <option value="priceLow">Price (Low to High)</option>
+                                <option value="priceHigh">Price (High to Low)</option>
+                                <option value="popular">Most Popular</option>
+                                <option value="eco">Eco-Friendly First</option>
+                            </select>
+                        </div>
+                        <button class="reset-btn" ng-click="reset()">
+                            <i class="fas fa-redo"></i> Start Over
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mind Map Visualization -->
+                <div class="mind-map-container" ng-show="showMindMap">
+                    <div class="mind-map">
+                        <div class="central-node">
+                            <div class="node-content">
+                                <i class="fas" ng-class="getOccasionIcon(selectedOccasion)"></i>
+                                <span>{{selectedOccasion}}</span>
+                            </div>
+                        </div>
+                        <div class="category-node" ng-repeat="category in mindMapCategories" 
+                             ng-style="getNodePosition($index)">
+                            <div class="node-content">
+                                <i class="fas" ng-class="category.icon"></i>
+                                <span>{{category.name}}</span>
+                            </div>
+                            <div class="gift-node" ng-repeat="gift in getGiftsForCategory(category.name)">
+                                <div class="node-content" ng-click="viewDetails(gift)">
+                                    <img ng-src="{{gift.image}}" alt="{{gift.name}}">
+                                    <span>{{gift.name}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Grid View Toggle -->
+                <div class="view-toggle">
+                    <button ng-class="{'active': !showMindMap}" ng-click="toggleView(false)">
+                        <i class="fas fa-th"></i> Grid View
+                    </button>
+                    <button ng-class="{'active': showMindMap}" ng-click="toggleView(true)">
+                        <i class="fas fa-project-diagram"></i> Mind Map
+                    </button>
+                </div>
+                
+                <!-- Grid View -->
+                <div class="gift-grid" ng-show="!showMindMap">
+                    <div class="gift-card" ng-repeat="gift in suggestions">
+                        <div class="gift-image" ng-style="{'background-image': 'url(' + gift.image + ')'}">
+                            <div class="match-score" ng-style="{'background': getScoreColor(gift.matchScore)}">
+                                {{gift.matchScore}}% Match
+                            </div>
+                            <div class="eco-badge" ng-if="gift.ecoFriendly">
+                                <i class="fas fa-leaf"></i> Eco-Friendly
+                            </div>
+                        </div>
+                        <div class="gift-details">
+                            <h3>{{gift.name}}</h3>
+                            <div class="gift-price">{{gift.price}}</div>
+                            <div class="gift-tags">
+                                <span class="tag" ng-repeat="tag in gift.tags">{{tag}}</span>
+                            </div>
+                            <div class="gift-actions">
+                                <button class="like-btn" ng-click="rateGift(gift.id, 'like')">
+                                    <i class="fas fa-thumbs-up"></i> {{gift.likes || 0}}
+                                </button>
+                                <button class="dislike-btn" ng-click="rateGift(gift.id, 'dislike')">
+                                    <i class="fas fa-thumbs-down"></i> {{gift.dislikes || 0}}
+                                </button>
+                                <button class="buy-btn" ng-click="viewDetails(gift)">
+                                    <i class="fas fa-shopping-cart"></i> Buy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="load-more" ng-click="loadMore()" ng-show="hasMoreSuggestions">
+                    <i class="fas fa-sync-alt"></i> Load More Ideas
+                </button>
+            </section>
+
+            <!-- Gift Detail Modal -->
+            <div class="modal-overlay" ng-show="selectedGift">
+                <div class="modal">
+                    <button class="close-modal" ng-click="selectedGift = null">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="modal-content">
+                        <div class="modal-image" ng-style="{'background-image': 'url(' + selectedGift.image + ')'}">
+                            <div class="image-badges">
+                                <div class="match-badge" ng-style="{'background': getScoreColor(selectedGift.matchScore)}">
+                                    {{selectedGift.matchScore}}% Match
+                                </div>
+                                <div class="eco-badge" ng-if="selectedGift.ecoFriendly">
+                                    <i class="fas fa-leaf"></i> Eco-Friendly
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-details">
+                            <h2>{{selectedGift.name}}</h2>
+                            <div class="modal-meta">
+                                <div class="modal-price">{{selectedGift.price}}</div>
+                                <div class="modal-rating">
+                                    <i class="fas fa-star" ng-repeat="i in [1,2,3,4,5]" 
+                                       ng-class="{'filled': i <= selectedGift.rating}"></i>
+                                    <span>({{selectedGift.reviews}} reviews)</span>
+                                </div>
+                            </div>
+                            <div class="modal-description">
+                                <p>{{selectedGift.description}}</p>
+                            </div>
+                            <div class="modal-highlights">
+                                <h4>Why it's perfect:</h4>
+                                <ul>
+                                    <li ng-repeat="highlight in selectedGift.highlights">
+                                        <i class="fas fa-check-circle"></i> {{highlight}}
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="modal-tags">
+                                <span class="tag" ng-repeat="tag in selectedGift.tags">
+                                    <i class="fas fa-tag"></i> {{tag}}
+                                </span>
+                            </div>
+                            <div class="modal-actions">
+                                <button class="primary-btn">
+                                    <i class="fas fa-external-link-alt"></i> View Purchase Options
+                                </button>
+                                <button class="secondary-btn" ng-click="saveForLater(selectedGift)">
+                                    <i class="fas fa-bookmark"></i> Save for Later
+                                </button>
+                                <button class="share-btn" ng-click="shareGift(selectedGift)">
+                                    <i class="fas fa-share-alt"></i> Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>Built with <i class="fas fa-heart"></i> for the Vibe Coding Hackathon by CodeCircuit and Outlier AI</p>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-github"></i></a>
+                <a href="#"><i class="fab fa-linkedin"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>
